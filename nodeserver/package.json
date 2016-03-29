@@ -1,0 +1,15 @@
+{
+  "name": "hackitapp",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "express": "~4.11.1",
+	"body-parser": "latest",
+	"request": "latest",
+	"querystring": "latest",
+	"jsonfile": "latest"
+  }
+}
