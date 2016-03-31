@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var http = require('https');
+var fs = require('fs')
 var querystring = require('querystring');
 var url = require('url');
 var jsonfile = require('jsonfile');
@@ -70,11 +71,76 @@ app.post('/search', function (req, res) {
   });
  });
 
+app.post('/subscriptions', function (req, res) {
+	var user_id = req.body.id;
+	var token = req.body.token;
+	jsonfile.readFile(file, function(err, obj) {
+		//obj = JSON.parse(obj);
+		if(obj[user_id]) {
+			console.dir(obj[user_id])
+			getAuthTokenForRefreshToken(obj[user_id], function (data){
+				var parsed = JSON.parse(data);
+				getMySubscriptions(parsed.access_token, function(data){
+					res.send(data);
+				});
+			});
+		}
+		else if (token){
+			getAuthandrefreshToken(token, function (data){
+				var parsed = JSON.parse(data);
+				obj[user_id]=parsed.refresh_token;
+				jsonfile.writeFile(file, obj, function (err) {
+					console.error(err)
+				});
+				getMySubscriptions(parsed.access_token, function(data){
+					res.send(data);
+				});
+			});
+		}
+		else {
+			res.status(400).send('Authorization code not sent in request.');
+		}
+	});
+});
+
+app.post('/likes', function (req, res) {
+	var user_id = req.body.id;
+	var token = req.body.token;
+	jsonfile.readFile(file, function(err, obj) {
+		//obj = JSON.parse(obj);
+		if(obj[user_id]) {
+			console.dir(obj[user_id])
+			getAuthTokenForRefreshToken(obj[user_id], function (data){
+				var parsed = JSON.parse(data);
+				getMyLikes(parsed.access_token, function(data){
+					res.send(data);
+				});
+			});
+		}
+		else if (token){
+			getAuthandrefreshToken(token, function (data){
+				var parsed = JSON.parse(data);
+				obj[user_id]=parsed.refresh_token;
+				jsonfile.writeFile(file, obj, function (err) {
+					console.error(err)
+				});
+				getMyLikes(parsed.access_token, function(data){
+					res.send(data);
+				});
+			});
+		}
+		else {
+			res.status(400).send('Authorization code not sent in request.');
+		}
+	});
+});
+
+  // An object of options to indicate where to post to
 function getSearchResult(searchString, token, callback){
 
 	return http.get({
         host: 'www.googleapis.com',
-        path: '/youtube/v3/search?part=snippet&type=video&maxResults=20&q='+searchString,
+        path: '/youtube/v3/search?part=snippet&type=video&maxResults=20&q='+encodeURI(searchString),
 		headers: {
            'Authorization': 'Bearer '+ token
         },
@@ -92,6 +158,48 @@ function getSearchResult(searchString, token, callback){
 
 }
 
+
+function getMySubscriptions(token, callback){
+	return http.get({
+        host: 'www.googleapis.com',
+		path: '/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=20',
+		headers: {
+           'Authorization': 'Bearer '+ token
+        },
+    }, function(response) {
+        // Continuously update stream with data
+        var body = '';
+        response.on('data', function(d) {
+            body += d;
+        });
+        response.on('end', function() {
+            console.log(body);
+			callback(body);
+        });
+    });
+
+}
+
+function getMyLikes(token, callback){
+	return http.get({
+        host: 'www.googleapis.com',
+		path: '/youtube/v3/videos?myRating=like&part=snippet&maxResults=20',
+		headers: {
+           'Authorization': 'Bearer '+ token
+        },
+    }, function(response) {
+        // Continuously update stream with data
+        var body = '';
+        response.on('data', function(d) {
+            body += d;
+        });
+        response.on('end', function() {
+            console.log(body);
+			callback(body);
+        });
+    });
+
+}
 
 
 function getAuthandrefreshToken(codeString, callback) {
@@ -173,5 +281,14 @@ function getAuthTokenForRefreshToken(codeString, callback) {
 }
 
 app.listen(80, function () {
-  console.log('Hackit app listening on port 80!');
+	console.log('Hackit app listening on port 80!');
+	fs.stat(file, function(err, stat) {
+		if(err == null) {
+			console.log(file + ' exists');
+		}
+		else if(err.code == 'ENOENT') {
+			console.log('Creating ' + file);
+			fs.writeFile(file, '{}');
+		}
+	});
 });
