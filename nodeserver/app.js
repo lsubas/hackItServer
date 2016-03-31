@@ -35,11 +35,8 @@ app.post('/search', function (req, res) {
   var user_id = req.body.id;
   var token = req.body.token;
   var search = req.body.search;
-  console.log(user_id);
-  console.log(token);
-  console.log(search);
   jsonfile.readFile(file, function(err, obj) {
-	console.log(obj)
+
 	//obj = JSON.parse(obj);
 	if(obj[user_id]) {
 	    
@@ -51,7 +48,7 @@ app.post('/search', function (req, res) {
 			});
 		});
 	}
-	else {
+	else if (token){
 
 		getAuthandrefreshToken(token, function (data){
 			var parsed = JSON.parse(data);
@@ -65,6 +62,9 @@ app.post('/search', function (req, res) {
 		});
 	
 	
+	}
+	else {
+		res.status(400).send('Authorization code not sent in request.');
 	}
 	
   });
